@@ -1,15 +1,11 @@
 package Bank;
 
-import java.util.Random;
-import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 
-import static java.lang.Thread.interrupted;
 
 public class Bank {
-    private int TO_STRING_FREQUENCY;
-    private int TEST_FREQUENCY;
+    private int TO_STRING_FREQUENCY = 0;
+    private int TEST_FREQUENCY = 100;
     private Lock lock;
     private long transactionCount = 0L;
     private int deviationCount = 0;
@@ -25,24 +21,26 @@ public class Bank {
         for (int i = 0; i < accountAmount; i++) {
            this.accounts[i] = new Account(this.initialbalance, i);
         }
+        System.out.println(accounts.length);
     }
 
-    void transfer(int fromID,int toID, int amount) {
-        while (true) {
-            if (amount <= accounts[fromID].getBalance()) {
+    void transfer(int fromID,int toID, int amount) throws InterruptedException {
                 accounts[fromID].withdraw(amount);
                 accounts[toID].deposit(amount);
-                break;
-            }
-        }
+                transactionCount ++;
+                int currentTotal = 0;
+                for (int i = 0; i < this.accounts.length; i++) {
+                    currentTotal += accounts[i].getBalance();
+                }
+
+                if (currentTotal != this.initialbalance * accounts.length) {
+                    this.deviationCount++;
+                }
     }
 
     void test() {
         int totalSum = accounts.length * this.initialbalance;
         int accountSum = 0;
-        for (int i = 0; i < accounts.length; i++) {
-            accountSum += accounts[i].getBalance();
-        }
         System.out.println("Expected sum: " + totalSum + "\nCurrent sum: " + accountSum);
     }
 
@@ -51,86 +49,24 @@ public class Bank {
         return "";
     }
 
-    int numberOfAccounts() {
-        return accounts.length;
+    public int numberOfAccounts() {
+        return this.accounts.length;
     }
 
-    private long getTransactionCount() {
+    public long getTransactionCount() {
         return transactionCount;
     }
 
-    private int getDeviationCount() {
+    public int getDeviationCount() {
         return deviationCount;
     }
 
-    private double getErrorPercentage() {
+    public double getErrorPercentage() {
         return (1.0 * getDeviationCount() / getTransactionCount()) * 100;
     }
 
 }
 
 
-class Account {
-    private int balance;
-    private int accountID;
-    private Lock lock = new ReentrantLock();
-    private Condition lockCondition = lock.newCondition();
 
-    Account(int startBalance, int accountID) {
-        this.balance = startBalance;
-        this.accountID = accountID;
-    }
 
-    public void deposit(int amount) {
-        this.balance += amount;
-    }
-
-    public void withdraw(int amount) {
-        lock.lock();
-        if (amount <= this.balance) {
-            this.balance -= amount;
-        }
-        lock.unlock();
-    }
-
-    public int getAccountID() {
-        return this.accountID;
-    }
-    public int getBalance() {
-        return this.balance;
-    }
-
-    public Lock getLock() {
-        return lock;
-    }
-}
-
-class AccountThreads extends Runnable{
-    private Bank bank;
-    private boolean debug;
-    private int accountIndex;
-    private int maxTransferAmount;
-    private Random random;
-
-    AccountThreads(Bank bank, int accountIndex, int maxTransferAmount, boolean debug) {
-        this.accountIndex = accountIndex;
-        this.maxTransferAmount = maxTransferAmount;
-        this.debug = debug;
-    }
-
-    @Override
-    public void run() {
-        while (!interrupted()) {
-            for (int i = 0; i < 1000; i++) {
-                int toAccount = random.nextInt(bank.numberOfAccounts());
-                int amount = (int) (this.maxTransferAmount * Math.random() / 1000);
-                bank.transfer(accountIndex, toAccount, amount);
-                try {
-                    Thread.sleep(1);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-    }
-}
