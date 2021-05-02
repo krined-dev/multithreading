@@ -35,7 +35,7 @@ class App {
             }
         }
 
-        System.out.println(index);
+        System.out.println(index + " " + threadID);
         
 
     }
@@ -61,7 +61,7 @@ class intFinder implements Callable<Integer> {
     public Integer call() {
         try {
             for (int i = this.startIndex; i <= this.endIndex; i++) {
-                Thread.sleep(0);
+                Thread.sleep(1);
                 if (this.arr[i] == this.numToFind) {
                     // System.out.printf("%d at index: %d\n", this.numToFind, i);
                     return i;
